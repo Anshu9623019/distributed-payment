@@ -27,28 +27,6 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
 
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//        http
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/api/v1/auth/**").permitAll()
-//                        .requestMatchers("/api/v1/webhooks/**").permitAll()
-//                        .requestMatchers(
-//                                "/v3/api-docs/**",
-//                                "/swagger-ui/**",
-//                                "/swagger-ui.html"
-//                        ).permitAll()
-//                        .anyRequest().authenticated()
-//                )
-//                .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
-//                .addFilterBefore(jwtAuthFilter, ApiKeyAuthenticationFilter.class);
-//
-//        return http.build();
-//    }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -61,10 +39,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        // 2. Allow authentication and webhook endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
-                        // 2. Allow your authentication endpoints
-                        .requestMatchers("/api/v1/auth/**").permitAll()
 
                         // 3. Secure everything else
                         .anyRequest().authenticated()
@@ -73,9 +50,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                // 5. Wire your custom filters into the Security Chain execution order
+                // 5. Wire your custom filters cleanly into the Security Chain execution order
                 .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, ApiKeyAuthenticationFilter.class); // Evaluates JWT first, falls back to API key check
 
         return http.build();
     }
@@ -83,11 +60,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Vite's default dev server origin. Add your deployed frontend's
-        // origin here too once this isn't running locally.
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // Added your deployed production front-end origin alongside local dev setup
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "https://distributed-payment-frontend-2.vercel.app"
+        ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "x-api-key")); // Explicitly name headers if wildcard errors persist
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -99,5 +80,4 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
 }
