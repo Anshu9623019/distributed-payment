@@ -17,7 +17,11 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,7 +34,6 @@ public class KafkaConfig {
     @Value("${spring.kafka.properties.security.protocol:PLAINTEXT}")
     private String securityProtocol;
 
-    // Use Spring's Resource abstraction to cleanly map the files out of target/classes/certs
     @Value("${spring.kafka.properties.ssl.truststore.location:}")
     private Resource truststoreResource;
 
@@ -47,24 +50,36 @@ public class KafkaConfig {
     private String keyPassword;
 
     /**
-     * Resolves absolute file paths from packaged resources for the native Kafka driver.
+     * Safely extracts keys out of the compiled executable JAR context into the
+     * ephemeral file system runtime space for the native Kafka Driver.
      */
     private void appendSslProperties(Map<String, Object> props) {
         if ("SSL".equalsIgnoreCase(securityProtocol)) {
             props.put("security.protocol", "SSL");
             try {
                 if (truststoreResource != null && truststoreResource.exists()) {
-                    props.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, truststoreResource.getFile().getAbsolutePath());
+                    String tsPath = copyResourceToTempFile(truststoreResource, "truststore", ".jks");
+                    props.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, tsPath);
                 }
                 if (keystoreResource != null && keystoreResource.exists()) {
-                    props.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, keystoreResource.getFile().getAbsolutePath());
+                    String ksPath = copyResourceToTempFile(keystoreResource, "keystore", ".jks");
+                    props.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, ksPath);
                 }
             } catch (IOException e) {
-                throw new IllegalStateException("CRITICAL CONFIGURATION ERROR: Failed to resolve absolute path for Kafka SSL certificates", e);
+                throw new IllegalStateException("CRITICAL CONFIGURATION ERROR: Failed to unpack Kafka JKS certificates from JAR structure", e);
             }
             props.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, truststorePassword);
             props.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, keystorePassword);
             props.put(SslConfigs.SSL_KEY_PASSWORD_CONFIG, keyPassword);
+        }
+    }
+
+    private String copyResourceToTempFile(Resource resource, String prefix, String suffix) throws IOException {
+        try (InputStream in = resource.getInputStream()) {
+            File tempFile = File.createTempFile(prefix + "_", suffix);
+            tempFile.deleteOnExit(); // Clean up system disk storage space when VM terminates
+            Files.copy(in, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return tempFile.getAbsolutePath();
         }
     }
 
