@@ -1,0 +1,224 @@
+##spring:
+##  application:
+##    name: distributed-payment
+##
+##  datasource:
+##    url: jdbc:postgresql://localhost:5433/distributed_payment
+##    username: ${DB_USERNAME:postgres}
+##    password: ${DB_PASSWORD:postgres}
+##
+##  jpa:
+##    hibernate:
+##      ddl-auto: validate   # schema.sql is the source of truth, not Hibernate auto-DDL
+##    properties:
+##      hibernate:
+##        format_sql: true
+##    open-in-view: false
+##
+##  data:
+##    redis:
+##      host: ${REDIS_HOST:localhost}
+##      port: ${REDIS_PORT:6379}
+##
+##  kafka:
+##    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+##    consumer:
+##      group-id: distributed-payment
+##      auto-offset-reset: earliest
+##      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+##      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+##
+#jwt:
+#  secret: ${JWT_SECRET:9a4f2c8d3e6b1a5c7d8e2f4a6b0c1d3e5f7a9b0c2d4e6f8a0b2c4d6e8f0a2c4d}
+#  expiration-ms: 86400000
+##
+##stripe:
+##  api:
+##    key: ${STRIPE_API_KEY:sk_test_placeholder}
+##  webhook:
+##    secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+##  checkout:
+##    success-url: ${STRIPE_SUCCESS_URL:https://yourfrontend.com/topup/success}
+##    cancel-url: ${STRIPE_CANCEL_URL:https://yourfrontend.com/topup/cancel}
+##
+##logging:
+##  level:
+##    com.distributed_payment: INFO
+##
+#
+#server:
+#  port: 8081
+#
+#spring:
+#  application:
+#    name: distributed-payment
+#
+#  docker:
+#    compose:
+#      enabled: true
+#      read-only: true
+#
+#  datasource:
+#    url: jdbc:postgresql://localhost:5433/payment_db
+#    username: postgres
+#    password: Anshu123
+#    driver-class-name: org.postgresql.Driver
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#        format_sql: true
+#
+#  kafka:
+#    bootstrap-servers: localhost:29092
+#    consumer:
+#      group-id: payment-service-group
+#      auto-offset-reset: earliest
+#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      properties:
+#        spring.json.add.type.headers: true
+#        spring.json.trusted.packages: "com.distributed_payment.*"
+#        spring.json.value.default.type: com.distributed_payment.event.PaymentInitiatedEvent
+#    producer:
+#      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+#      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+#
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+#
+#stripe:
+#  api:
+#    key: sk_test_your_secret_key_here
+#  webhook:
+#    secret: whsec_your_webhook_secret_here
+#  checkout:
+#    success-url: http://localhost:8081/api/v1/payments/success
+#    cancel-url: http://localhost:8081/api/v1/payments/cancel
+#
+#logging:
+#  level:
+#    org.springframework.web.reactive.DispatcherHandler: DEBUG
+#    org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerMapping: DEBUG
+#
+#
+## Devtools settings
+
+
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: distributed-payment
+
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+
+  # 1. Cloud Database (Neon Tech PostgreSQL Pooler Connection)
+  datasource:
+    url: jdbc:postgresql://ep-wild-darkness-anqwh4e3-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+    username: neondb_owner
+    password: ${DB_PASSWORD:npg_QzugL9DpdMl4}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  # 2. Secure Cloud Memory Layer (Upstash Redis via Lettuce with SSL)
+  data:
+    redis:
+      url: ${REDIS_URL:rediss://default:gQAAAAAAAm2TAAIgcDE3MTk3YWZjOTcwODA0ZGZmYTBiOTRjYWVjYWEyYWEzMQ@holy-teal-159123.upstash.io:6379}
+      ssl:
+        enabled: true
+      connect-timeout: 10000ms
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  # 3. Enterprise Event Streaming (Aiven Kafka Platform over TLS/SSL)
+  kafka:
+    bootstrap-servers: autocomplete-kafka-ak9623019-b363.g.aivencloud.com:19348
+    properties:
+      security.protocol: SSL
+      ssl.truststore.location: classpath:certs/client.truststore.jks
+      ssl.truststore.password: ${KAFKA_SSL_PASSWORD:AnshuSecret123}
+      ssl.keystore.location: classpath:certs/client.keystore.jks
+      ssl.keystore.password: ${KAFKA_SSL_PASSWORD:AnshuSecret123}
+      ssl.key.password: ${KAFKA_SSL_PASSWORD:AnshuSecret123}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: 1
+    consumer:
+      group-id: payment-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.add.type.headers: true
+        spring.json.trusted.packages: "com.distributed_payment.*"
+    listener:
+      ack-mode: MANUAL_IMMEDIATE
+      auto-startup: true
+
+  task:
+    scheduling:
+      pool:
+        size: 5
+
+# 4. Security Framework Parameters
+jwt:
+  secret: ${JWT_SECRET:9a4f2c8d3e6b1a5c7d8e2f4a6b0c1d3e5f7a9b0c2d4e6f8a0b2c4d6e8f0a2c4d}
+  expiration-ms: 86400000
+
+# 5. Core Ledger Processing / Gateway Values
+stripe:
+  api:
+    key: ${STRIPE_API_KEY:sk_test_your_secret_key_here}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET:whsec_your_webhook_secret_here}
+  checkout:
+    success-url: http://localhost:8081/api/v1/payments/success
+    cancel-url: http://localhost:8081/api/v1/payments/cancel
+
+# 6. Observability
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.hibernate.SQL: OFF
+    com.distributed_payment: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
